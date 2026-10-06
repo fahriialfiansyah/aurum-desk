@@ -1,4 +1,4 @@
-import { sendTelegramMessage } from '@aurum/shared';
+import { sendTelegramMessage } from '@aurum/shared/node';
 import type { IngestEnv } from './config/env';
 import type { Logger } from './logger';
 

@@ -1,14 +1,5 @@
-import {
-  HISTORY_SOURCE_NAMES,
-  LIVE_PROVIDER_NAMES,
-  envEnum,
-  envInt,
-  envNumber,
-  envString,
-  loadDotenv,
-  optionalString,
-  parseEnv,
-} from '@aurum/shared';
+import { HISTORY_SOURCE_NAMES, LIVE_PROVIDER_NAMES } from '@aurum/shared';
+import { envEnum, envInt, envNumber, envString, loadDotenv, optionalString, parseEnv } from '@aurum/shared/node';
 import { z } from 'zod';
 
 export const LOG_LEVELS = ['trace', 'debug', 'info', 'warn', 'error'] as const;

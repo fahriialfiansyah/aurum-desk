@@ -1,5 +1,6 @@
 import { createDb, listRecentIngestRuns, pingDb } from '@aurum/db';
-import { nowSec, resolveFromWorkspaceRoot, secFromIso } from '@aurum/shared';
+import { nowSec, secFromIso } from '@aurum/shared';
+import { resolveFromWorkspaceRoot } from '@aurum/shared/node';
 import { parseArgs } from 'node:util';
 import { createAlerter } from './alerts';
 import { exportCsv } from './commands/export-csv';

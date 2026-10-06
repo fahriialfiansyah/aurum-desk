@@ -1,4 +1,5 @@
-import { resolveFromWorkspaceRoot, type HistoricalDataProvider, type HistorySourceName } from '@aurum/shared';
+import { type HistoricalDataProvider, type HistorySourceName } from '@aurum/shared';
+import { resolveFromWorkspaceRoot } from '@aurum/shared/node';
 import type { IngestEnv } from '../config/env';
 import { DukascopyProvider } from './dukascopy';
 

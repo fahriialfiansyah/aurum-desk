@@ -1,5 +1,6 @@
 import { getCandles, type Db } from '@aurum/db';
-import { resolveFromWorkspaceRoot, secFromIso, type Candle, type LiveMarketDataProvider } from '@aurum/shared';
+import { secFromIso, type Candle, type LiveMarketDataProvider } from '@aurum/shared';
+import { resolveFromWorkspaceRoot } from '@aurum/shared/node';
 import type { ServerEnv } from '../config/env';
 import { loadCandleCsv } from './csv';
 import { MockProvider } from './mock';

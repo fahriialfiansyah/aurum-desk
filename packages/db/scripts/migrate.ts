@@ -1,4 +1,4 @@
-import { loadDotenv } from '@aurum/shared';
+import { loadDotenv } from '@aurum/shared/node';
 import { runMigrations } from '../src/migrate';
 
 loadDotenv();

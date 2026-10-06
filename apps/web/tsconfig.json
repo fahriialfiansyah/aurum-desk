@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "jsx": "preserve",
+    "allowJs": true,
+    "incremental": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "types": ["node", "react", "react-dom"],
+    "plugins": [{ "name": "next" }],
+    "paths": { "@/*": ["./src/*"] }
+  },
+  "include": ["next-env.d.ts", "app/**/*.ts", "app/**/*.tsx", "src/**/*.ts", "src/**/*.tsx", "test/**/*.ts", "test/**/*.tsx", "*.ts", "*.mjs", ".next/types/**/*.ts"],
+  "exclude": ["node_modules", ".next", "playwright-report", "test-results"]
+}
