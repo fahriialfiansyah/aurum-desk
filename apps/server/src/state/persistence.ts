@@ -5,11 +5,12 @@ import {
   listRecentAgentEvents,
   pingDb,
   saveAgentEvent,
+  saveChatMessage,
   saveSetup,
   type Db,
   type DbHandle,
 } from '@aurum/db';
-import type { AgentEvent, Setup } from '@aurum/shared';
+import type { AgentEvent, ChatMessage, Setup } from '@aurum/shared';
 import type { Logger } from '../logger';
 
 /**
@@ -23,6 +24,7 @@ export type Persistence = {
   loadEvents(limit: number): Promise<AgentEvent[]>;
   saveSetup(setup: Setup): Promise<void>;
   saveEvent(event: AgentEvent): Promise<void>;
+  saveChat(conversationId: string, message: ChatMessage): Promise<void>;
   close(): Promise<void>;
 };
 
@@ -33,6 +35,7 @@ const memory: Persistence = {
   loadEvents: async () => [],
   saveSetup: async () => undefined,
   saveEvent: async () => undefined,
+  saveChat: async () => undefined,
   close: async () => undefined,
 };
 
@@ -58,6 +61,7 @@ export async function createPersistence(databaseUrl: string, logger: Logger): Pr
     loadEvents: (limit) => listRecentAgentEvents(handle.db, limit),
     saveSetup: (setup) => guard('setup', () => saveSetup(handle.db, setup)),
     saveEvent: (event) => guard('event', () => saveAgentEvent(handle.db, event)),
+    saveChat: (conversationId, message) => guard('chat', () => saveChatMessage(handle.db, conversationId, message)),
     close: () => handle.close(),
   };
 }

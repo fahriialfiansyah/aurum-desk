@@ -1,7 +1,11 @@
 import { SpendTracker, createLlmProvider, type LlmConfig } from '@aurum/llm';
-import { nowSec, type LlmSpend, type WsServerMessage } from '@aurum/shared';
+import { SESSION_LABEL_ID, formatPrice, nowSec, type LlmSpend, type WsServerMessage } from '@aurum/shared';
 import { AgentOrchestrator } from './agents/orchestrator';
+import { createAlertService } from './alerts/telegram-alerts';
 import { loadServerEnv, type ServerEnv } from './config/env';
+import { Copilot } from './copilot/copilot';
+import { DrawingStore } from './copilot/drawings';
+import { buildTools } from './copilot/tools';
 import { EngineRunner, type RunnerEvent } from './engine/runner';
 import { buildApp } from './http/app';
 import { createLogger } from './logger';
@@ -76,19 +80,52 @@ async function main(): Promise<void> {
     ...runner.analyses().map((snapshot) => ({ type: 'analysis' as const, snapshot })),
     { type: 'setups', setups: [...setups.active, ...setups.journal.slice(0, 50)] },
     { type: 'agentStates', states: events.agentStates() },
+    ...drawings.all().map((drawing) => ({ type: 'drawing' as const, action: 'add' as const, drawing })),
     ...events.recent(100).map((event) => ({ type: 'agentEvent' as const, event })),
     { type: 'metrics', metrics: metrics() },
   ];
 
+  const alerts = createAlertService({ botToken: env.TELEGRAM_BOT_TOKEN, chatId: env.TELEGRAM_CHAT_ID }, logger);
   const publishRunnerEvents = (runnerEvents: RunnerEvent[]) => {
     for (const ev of runnerEvents) {
       if (ev.type === 'analysis') hub.broadcast({ type: 'analysis', snapshot: ev.snapshot });
       if (ev.type === 'setup') {
         hub.broadcast({ type: 'setup', setup: ev.setup, transition: ev.transition });
         void persistence.saveSetup(ev.setup);
+        alerts.notify(ev.setup, ev.transition);
       }
     }
   };
+  const onRunnerEvents = (runnerEvents: RunnerEvent[]) => {
+    publishRunnerEvents(runnerEvents);
+    orchestrator.onCycle([], runnerEvents);
+  };
+
+  const drawings = new DrawingStore();
+  const tools = buildTools({
+    feed,
+    runner,
+    setups,
+    drawings,
+    metrics,
+    onRunnerEvents,
+    onDrawing: (action, drawing, drawingId) => hub.broadcast({ type: 'drawing', action, drawing, drawingId }),
+  });
+  const copilot = new Copilot({
+    llm,
+    spend,
+    tools,
+    events,
+    publish: (message) => hub.broadcast(message),
+    persist: (conversationId, message) => void persistence.saveChat(conversationId, message),
+    context: () => {
+      const m = metrics();
+      const active = setups.active.map((s) => `${s.id} ${s.direction} ${s.status} entry ${formatPrice(s.entry)}`).join('; ') || 'tidak ada';
+      return `harga ${m.lastPrice === null ? '—' : formatPrice(m.lastPrice)}, sesi ${SESSION_LABEL_ID[m.session]}, ATR M15 ${m.atrM15?.toFixed(2) ?? '—'}, setup aktif: ${active}`;
+    },
+    rules: { runner, setups, feed, tools },
+    logger,
+  });
 
   let publishSetup: (setup: typeof setups.active[number]) => void = () => undefined;
   const orchestrator = new AgentOrchestrator({
@@ -112,11 +149,8 @@ async function main(): Promise<void> {
     provider,
     metrics,
     hello,
-    onRunnerEvents: (runnerEvents) => {
-      publishRunnerEvents(runnerEvents);
-      orchestrator.onCycle([], runnerEvents);
-    },
-    chat: null,
+    onRunnerEvents,
+    chat: (request) => copilot.handle(request),
   });
   publishSetup = (setup) => {
     hub.broadcast({ type: 'setup', setup, transition: null });
