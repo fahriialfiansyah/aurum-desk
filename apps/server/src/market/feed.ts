@@ -64,10 +64,11 @@ export class MarketFeed {
   private pushClosed(candle: Candle): FeedEvent[] {
     const last = this.m1[this.m1.length - 1];
     if (last && candle.time < last.time) return []; // stale, ignore
-    if (last && candle.time === last.time) this.m1 = [...this.m1.slice(0, -1), candle];
-    else this.m1 = [...this.m1, candle];
+    const replacing = last !== undefined && candle.time === last.time;
+    this.m1 = replacing ? [...this.m1.slice(0, -1), candle] : [...this.m1, candle];
     this.formingM1 = null;
     this.trim();
+    if (replacing) return this.rebuildBuckets(candle);
 
     const events: FeedEvent[] = [{ tf: 'M1', candle, closed: true }];
     for (const tf of DERIVED_TIMEFRAMES) {
@@ -82,6 +83,26 @@ export class MarketFeed {
       const merged = mergeIntoBucket(this.bucketAcc[tf]?.time === start ? this.bucketAcc[tf] : undefined, candle, start);
       if (isBucketComplete(candle.time, tf)) {
         this.closed[tf] = [...this.closed[tf], merged];
+        this.bucketAcc[tf] = undefined;
+        events.push({ tf, candle: merged, closed: true });
+      } else {
+        this.bucketAcc[tf] = merged;
+        events.push({ tf, candle: merged, closed: false });
+      }
+    }
+    return events;
+  }
+
+  /** A re-sent last bar must not be merged twice: recompute every forming bucket from the M1 history. */
+  private rebuildBuckets(candle: Candle): FeedEvent[] {
+    const events: FeedEvent[] = [{ tf: 'M1', candle, closed: true }];
+    for (const tf of DERIVED_TIMEFRAMES) {
+      const start = bucketStart(candle.time, tf);
+      const inBucket = this.m1.filter((c) => c.time >= start && c.time <= candle.time);
+      const merged = aggregateCandles(inBucket, tf)[0];
+      if (!merged) continue;
+      if (isBucketComplete(candle.time, tf)) {
+        this.closed[tf] = [...this.closed[tf].filter((c) => c.time !== start), merged];
         this.bucketAcc[tf] = undefined;
         events.push({ tf, candle: merged, closed: true });
       } else {

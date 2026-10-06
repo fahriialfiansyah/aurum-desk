@@ -12,6 +12,11 @@ export const ingestEnvSchema = z.object({
   INGEST_CRON_INCREMENTAL: envString('*/5 * * * *'),
   INGEST_CRON_RECONCILE: envString('0 2 * * *'),
   TWELVEDATA_API_KEY: optionalString,
+  TWELVEDATA_PAUSE_MS: envInt(8000),
+  MT5_CSV_PATH: optionalString,
+  /** Broker server time minus UTC, in minutes (EET 120, EEST 180). */
+  MT5_TIME_OFFSET_MINUTES: envInt(0),
+  TRADINGVIEW_SYMBOL: envString('OANDA:XAUUSD'),
   TELEGRAM_BOT_TOKEN: optionalString,
   TELEGRAM_CHAT_ID: optionalString,
   TRADINGVIEW_ENABLED: envBoolean(false),
@@ -31,5 +36,13 @@ export function loadIngestEnv(source: Record<string, string | undefined> = proce
   if (unknownSources.length > 0) {
     throw new Error(`INGEST_SOURCES tidak dikenal: ${unknownSources.join(', ')}`);
   }
+  assertTradingViewNotAlone(env.INGEST_SOURCES);
   return env;
+}
+
+/** The unofficial TradingView adapter may complement an official source, never replace it. */
+export function assertTradingViewNotAlone(sources: readonly string[]): void {
+  if (sources.includes('tradingview') && !sources.some((s) => s !== 'tradingview')) {
+    throw new Error('INGEST_SOURCES tidak boleh hanya "tradingview" — adapter tidak resmi harus mendampingi sumber resmi (dukascopy/twelvedata/mt5csv).');
+  }
 }

@@ -1,10 +1,11 @@
 import { getCandles, type Db } from '@aurum/db';
 import { secFromIso, type Candle, type LiveMarketDataProvider } from '@aurum/shared';
-import { resolveFromWorkspaceRoot } from '@aurum/shared/node';
+import { TwelveDataClient, resolveFromWorkspaceRoot } from '@aurum/shared/node';
 import type { ServerEnv } from '../config/env';
 import { loadCandleCsv } from './csv';
 import { MockProvider } from './mock';
 import { ReplayProvider } from './replay';
+import { TwelveDataLiveProvider } from './twelvedata';
 
 const REPLAY_POSTGRES_MAX_BARS = 100_000;
 
@@ -44,8 +45,11 @@ export async function createLiveProvider(env: ServerEnv, db: Db | null): Promise
     }
     case 'mock':
       return new MockProvider();
-    case 'twelvedata':
-      throw new Error('Provider twelvedata tersedia di fase P6 (docs/PLAN.md).');
+    case 'twelvedata': {
+      if (!env.TWELVEDATA_API_KEY) throw new Error('TWELVEDATA_API_KEY wajib diisi untuk MARKET_DATA_PROVIDER=twelvedata');
+      const client = new TwelveDataClient({ apiKey: env.TWELVEDATA_API_KEY });
+      return new TwelveDataLiveProvider({ client, pollMs: env.TWELVEDATA_POLL_SECONDS * 1000 });
+    }
     default: {
       const never: never = env.MARKET_DATA_PROVIDER;
       throw new Error(`MARKET_DATA_PROVIDER tidak dikenal: ${String(never)}`);

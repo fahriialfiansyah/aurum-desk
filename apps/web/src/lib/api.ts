@@ -1,5 +1,5 @@
 import type { PlaybookId } from '@aurum/shared';
-import { API_URL } from './config';
+import { API_TOKEN, API_URL } from './config';
 
 export class ApiError extends Error {
   readonly status: number;
@@ -13,7 +13,10 @@ export class ApiError extends Error {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
   try {
-    response = await fetch(`${API_URL}${path}`, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers ?? {}) } });
+    response = await fetch(`${API_URL}${path}`, {
+      ...init,
+      headers: { 'content-type': 'application/json', ...(API_TOKEN ? { authorization: `Bearer ${API_TOKEN}` } : {}), ...(init?.headers ?? {}) },
+    });
   } catch (error) {
     throw new ApiError(0, `Server tidak terjangkau (${error instanceof Error ? error.message : 'network error'})`);
   }

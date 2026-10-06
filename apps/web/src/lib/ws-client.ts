@@ -1,7 +1,7 @@
 'use client';
 
 import { decodeWsServerMessage } from '@aurum/shared';
-import { WS_URL } from './config';
+import { API_TOKEN, WS_URL } from './config';
 import { useDeskStore } from '@/store/desk-store';
 
 const RECONNECT_BASE_MS = 800;
@@ -21,7 +21,7 @@ export function connectDesk(url: string = WS_URL): WsHandle {
 
   const open = () => {
     store().setConnection('connecting');
-    socket = new WebSocket(url);
+    socket = new WebSocket(API_TOKEN ? `${url}${url.includes('?') ? '&' : '?'}token=${encodeURIComponent(API_TOKEN)}` : url);
     socket.onopen = () => {
       attempt = 0;
       store().setConnection('open');

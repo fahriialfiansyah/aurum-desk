@@ -10,6 +10,29 @@ import { registerRoutes, type RoutesDeps } from './routes';
 
 export type AppDeps = RoutesDeps & { logger: Logger; hello: () => WsServerMessage[] };
 
+const RATE_WINDOW_MS = 60_000;
+
+/** Fixed-window counter per client IP for mutating requests. */
+export function createRateLimiter(limitPerMinute: number, now: () => number = Date.now) {
+  const buckets = new Map<string, { windowStart: number; count: number }>();
+  return (key: string): boolean => {
+    const t = now();
+    const bucket = buckets.get(key);
+    if (!bucket || t - bucket.windowStart >= RATE_WINDOW_MS) {
+      buckets.set(key, { windowStart: t, count: 1 });
+      return true;
+    }
+    bucket.count += 1;
+    return bucket.count <= limitPerMinute;
+  };
+}
+
+function bearerFrom(header: string | undefined, query: unknown): string | null {
+  if (header?.startsWith('Bearer ')) return header.slice('Bearer '.length).trim();
+  const token = (query as { token?: unknown } | undefined)?.token;
+  return typeof token === 'string' ? token : null;
+}
+
 /** Builds the Fastify app with CORS, the WebSocket endpoint and the REST routes. */
 export async function buildApp(deps: AppDeps): Promise<{ app: FastifyInstance; hub: WsHub }> {
   const env: ServerEnv = deps.env;
@@ -27,6 +50,18 @@ export async function buildApp(deps: AppDeps): Promise<{ app: FastifyInstance; h
       hub.stop();
       app.websocketServer.close(done);
     },
+  });
+
+  const allow = createRateLimiter(env.API_RATE_LIMIT_PER_MINUTE);
+  app.addHook('onRequest', async (request, reply) => {
+    const isWs = request.url.startsWith('/ws');
+    const isMutation = request.method !== 'GET' && request.method !== 'HEAD' && request.method !== 'OPTIONS';
+    if (env.SERVER_API_TOKEN && (isMutation || isWs)) {
+      const token = bearerFrom(request.headers.authorization, request.query);
+      if (token !== env.SERVER_API_TOKEN) return reply.code(401).send({ error: 'Token API tidak valid' });
+    }
+    if (isMutation && !allow(request.ip)) return reply.code(429).send({ error: 'Terlalu banyak permintaan, coba lagi sebentar' });
+    return undefined;
   });
 
   app.get('/ws', { websocket: true }, (socket: WebSocket) => {

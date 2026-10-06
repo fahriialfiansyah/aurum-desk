@@ -10,6 +10,7 @@ export const serverEnvSchema = z
   .object({
     MARKET_DATA_PROVIDER: envEnum(LIVE_PROVIDER_NAMES, 'replay'),
     TWELVEDATA_API_KEY: optionalString,
+    TWELVEDATA_POLL_SECONDS: envInt(15),
     REPLAY_SOURCE: envEnum(['csv', 'postgres'], 'csv'),
     REPLAY_CSV_PATH: envString('./data/xauusd-m1-sample.csv'),
     REPLAY_SPEED: envNumber(20),
@@ -33,6 +34,10 @@ export const serverEnvSchema = z
     SERVER_PORT: envInt(4000),
     SERVER_HOST: envString('0.0.0.0'),
     WEB_ORIGIN: envString('http://localhost:3000'),
+    /** Optional shared secret; when set, POST /api/* and /ws require `Authorization: Bearer <token>` (or ?token=). */
+    SERVER_API_TOKEN: optionalString,
+    /** POST requests per minute per client IP (chat, playbook runs, replay controls). */
+    API_RATE_LIMIT_PER_MINUTE: envInt(60),
     SYMBOL: envString('XAUUSD'),
     LOG_LEVEL: envEnum(LOG_LEVELS, 'info'),
     NODE_ENV: envString('development'),

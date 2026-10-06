@@ -58,6 +58,8 @@ export class AgentOrchestrator {
   private readonly ctx: AgentContext;
   /** Last summary per agent, so an unchanged conclusion is not re-logged every candle. */
   private readonly lastSummary = new Map<AgentName, string>();
+  /** Validator fingerprint per setup: re-run only when status or pressure changed (saves LLM calls). */
+  private readonly validated = new Map<string, string>();
 
   constructor(private readonly deps: OrchestratorDeps) {
     const { llm, spend, events } = deps;
@@ -101,7 +103,12 @@ export class AgentOrchestrator {
       for (const s of this.deps.setups.active) {
         const entryTf = PLAYBOOKS[s.playbook].entryTf;
         if (!closed.has(entryTf)) continue;
-        if ((s.status === 'watching' || s.status === 'valid') && isPriceInsideZone(price, s.zone)) job.validatorSetupIds.add(s.id);
+        if ((s.status === 'watching' || s.status === 'valid') && isPriceInsideZone(price, s.zone)) {
+          const fingerprint = `${s.status}:${s.pressure?.score ?? 'none'}:${s.pressure?.patterns.join(',') ?? ''}`;
+          if (this.validated.get(s.id) === fingerprint) continue;
+          this.validated.set(s.id, fingerprint);
+          job.validatorSetupIds.add(s.id);
+        }
       }
     }
     return job;

@@ -50,6 +50,8 @@ export class EngineRunner {
   private readonly window: number;
   private snapshots = new Map<Timeframe, AnalysisSnapshot>();
   private lastResults = new Map<PlaybookId, PlaybookResult>();
+  /** base setup id → active alias, so a zone re-proposed after an earlier (terminal) setup gets a fresh id. */
+  private readonly aliases = new Map<string, string>();
 
   constructor(deps: RunnerDeps) {
     this.feed = deps.feed;
@@ -126,7 +128,7 @@ export class EngineRunner {
     out.push({ type: 'playbook', playbook: id, result, candle });
 
     const before = new Map(this.setups.active.map((s) => [s.id, s] as const));
-    const proposed = result.best ? [result.best] : [];
+    const proposed = result.best ? [this.withUniqueId(result.best)] : [];
     const next = reconcileSetups(this.setups.active, proposed);
     const changed = this.setups.replaceActive(next);
     for (const s of changed) {
@@ -135,6 +137,28 @@ export class EngineRunner {
       if (!prev || transition) out.push(this.toSetupEvent({ setup: s, transition: prev ? transition : s.status }, !prev));
     }
     return out;
+  }
+
+  /**
+   * Deterministic ids collide when the same zone produces a setup again after the first one
+   * expired/stopped. Keep the base id while a setup is active; otherwise suffix `~n` and remember it.
+   */
+  private withUniqueId(setup: Setup): Setup {
+    const base = setup.id;
+    const active = this.setups.active;
+    if (active.some((s) => s.id === base)) return setup;
+    const alias = this.aliases.get(base);
+    if (alias && active.some((s) => s.id === alias)) return { ...setup, id: alias };
+    const taken = new Set(this.setups.all().map((s) => s.id));
+    if (!taken.has(base)) {
+      this.aliases.delete(base);
+      return setup;
+    }
+    let n = 2;
+    while (taken.has(`${base}~${n}`)) n += 1;
+    const id = `${base}~${n}`;
+    this.aliases.set(base, id);
+    return { ...setup, id };
   }
 
   private toSetupEvent(t: SetupTransition, isNew = false): RunnerEvent {

@@ -1,0 +1,13 @@
+node_modules
+**/node_modules
+.next
+**/.next
+coverage
+**/coverage
+.turbo
+**/.turbo
+.git
+data/cache
+playwright-report
+test-results
+.env

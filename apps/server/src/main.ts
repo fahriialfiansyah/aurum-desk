@@ -163,10 +163,10 @@ async function main(): Promise<void> {
   });
 
   await provider.start((candle, meta) => {
-    const feedEvents = feed.push(candle, meta.closed);
-    for (const ev of feedEvents) hub.broadcast({ type: 'candle', tf: ev.tf, candle: ev.candle, closed: ev.closed });
-    if (!meta.closed) return;
     try {
+      const feedEvents = feed.push(candle, meta.closed);
+      for (const ev of feedEvents) hub.broadcast({ type: 'candle', tf: ev.tf, candle: ev.candle, closed: ev.closed });
+      if (!meta.closed) return;
       const runnerEvents = runner.handle(feedEvents);
       publishRunnerEvents(runnerEvents);
       orchestrator.onCycle(feedEvents, runnerEvents);

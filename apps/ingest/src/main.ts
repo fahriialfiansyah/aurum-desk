@@ -9,6 +9,7 @@ import { createLogger } from './logger';
 import { listGaps, runBackfill, runIncremental, runReconcile } from './pipeline/jobs';
 import { createDbStore } from './pipeline/store';
 import { createHistoryProvider } from './providers';
+import { Mt5CsvProvider } from './providers/mt5csv';
 import { startScheduler } from './scheduler';
 
 const USAGE = `aurum-desk ingest
@@ -17,6 +18,7 @@ const USAGE = `aurum-desk ingest
   pnpm ingest incremental [--source dukascopy]
   pnpm ingest reconcile  [--days 30] [--source dukascopy]
   pnpm ingest gaps       [--days 30] [--source dukascopy]      (laporan saja)
+  pnpm ingest import-mt5 <file.csv> [--tz-offset 120]   (ekspor MetaTrader 5, waktu server → UTC)
   pnpm ingest export-csv --from YYYY-MM-DD --to YYYY-MM-DD --out data/xauusd-m1-sample.csv [--source dukascopy]
   pnpm ingest status
   pnpm ingest serve      (cron: incremental + reconcile + freshness alert)
@@ -37,6 +39,7 @@ async function main(): Promise<void> {
       source: { type: 'string' },
       days: { type: 'string' },
       out: { type: 'string' },
+      'tz-offset': { type: 'string' },
       help: { type: 'boolean', short: 'h' },
     },
   });
@@ -53,11 +56,18 @@ async function main(): Promise<void> {
     throw new Error(`Tidak bisa terhubung ke database (${env.DATABASE_URL.replace(/:\/\/.*@/, '://***@')}). Jalankan: pnpm db:up && pnpm db:migrate`);
   }
   const alerter = createAlerter(env, logger);
-  const sources = values.source ? [values.source] : env.INGEST_SOURCES;
-  const jobs = sources.map((source) => {
-    const provider = createHistoryProvider(source as IngestEnv['INGEST_SOURCES'][number], env);
-    return { provider, store: createDbStore(handle, env.SYMBOL, source) };
-  });
+  const sources = command === 'import-mt5' ? ['mt5csv'] : values.source ? [values.source] : env.INGEST_SOURCES;
+  const mt5Path = command === 'import-mt5' ? positionals[1] : undefined;
+  if (command === 'import-mt5' && !mt5Path) throw new Error('import-mt5 membutuhkan path file ekspor MT5');
+  const tzOffset = values['tz-offset'] !== undefined ? Number(values['tz-offset']) : env.MT5_TIME_OFFSET_MINUTES;
+  const envForJobs: IngestEnv = { ...env, MT5_TIME_OFFSET_MINUTES: Number.isFinite(tzOffset) ? tzOffset : env.MT5_TIME_OFFSET_MINUTES };
+  const jobs = sources
+    .filter((source) => source !== 'tradingview' || env.TRADINGVIEW_ENABLED)
+    .map((source) => {
+      const provider = createHistoryProvider(source as IngestEnv['INGEST_SOURCES'][number], envForJobs, { mt5Path });
+      return { provider, store: createDbStore(handle, env.SYMBOL, source) };
+    });
+  if (sources.includes('tradingview') && !env.TRADINGVIEW_ENABLED) logger.warn('sumber tradingview dilewati: TRADINGVIEW_ENABLED=false');
   const now = nowSec();
 
   try {
@@ -122,6 +132,16 @@ async function main(): Promise<void> {
           outPath: resolveFromWorkspaceRoot(values.out),
         });
         logger.info({ rows, out: values.out }, 'export selesai');
+        break;
+      }
+      case 'import-mt5': {
+        for (const { provider, store } of jobs) {
+          if (!(provider instanceof Mt5CsvProvider)) continue;
+          const range = await provider.range();
+          if (!range) throw new Error('File MT5 tidak berisi bar');
+          const summary = await runBackfill({ provider, store, fromSec: range.fromSec, toSec: range.toSec, nowSec: now, logger });
+          logger.info({ source: store.source, rows: summary.rowsWritten, rejected: summary.rejected, from: new Date(range.fromSec * 1000), to: new Date(range.toSec * 1000) }, 'import MT5 selesai');
+        }
         break;
       }
       case 'status': {

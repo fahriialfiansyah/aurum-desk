@@ -64,3 +64,22 @@ describe('EngineRunner on real data', () => {
     expect(setups.active.length).toBeGreaterThanOrEqual(before.length);
   });
 });
+
+describe('EngineRunner — setup id reuse', () => {
+  test('a zone re-proposed after its setup ended gets a suffixed id, and keeps it while active', () => {
+    const { feed, runner, setups, rest } = boot(4000);
+    for (const c of rest.slice(0, 300)) runner.handle(feed.push(c, true));
+    const active = setups.active[0];
+    if (!active) return; // data-dependent
+    // Force the active setup to a terminal state (as if it expired), then let the engine re-propose it.
+    setups.replaceActive(setups.active.map((s) => (s.id === active.id ? { ...s, status: 'expired' as const, closedAt: s.updatedAt } : s)));
+    expect(setups.journal.some((s) => s.id === active.id)).toBe(true);
+    const first = runner.runNow(active.playbook).result.best;
+    if (!first || `stp-${first.playbook}-${first.zone.id}` !== active.id) return; // engine chose another zone now
+    const activeIds = setups.active.map((s) => s.id);
+    expect(activeIds).toContain(`${active.id}~2`);
+    runner.runNow(active.playbook);
+    expect(setups.active.filter((s) => s.id.startsWith(active.id))).toHaveLength(1);
+    expect(setups.journal.some((s) => s.id === active.id)).toBe(true); // journal entry preserved
+  });
+});

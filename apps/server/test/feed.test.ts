@@ -75,3 +75,17 @@ describe('MarketFeed', () => {
     expect(feed.size().M1).toBeLessThanOrEqual(110);
   });
 });
+
+describe('MarketFeed — replaced last bar', () => {
+  test('re-sending the last M1 bar rebuilds the forming buckets instead of double-merging', () => {
+    const feed = new MarketFeed();
+    const series = m1Series(3);
+    for (const c of series) feed.push(c, true);
+    const before = feed.forming('M5')!;
+    const events = feed.push({ ...series[2]!, high: series[2]!.high + 10 }, true);
+    const after = feed.forming('M5')!;
+    expect(after.volume).toBeCloseTo(before.volume); // not counted twice
+    expect(after.high).toBeCloseTo(series[2]!.high + 10);
+    expect(events.find((e) => e.tf === 'M5')?.closed).toBe(false);
+  });
+});
