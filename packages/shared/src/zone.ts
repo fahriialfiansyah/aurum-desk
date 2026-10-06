@@ -32,6 +32,8 @@ export const ZoneSchema = z
     fresh: z.boolean(),
     tested: z.boolean(),
     invalidated: z.boolean(),
+    /** Number of distinct visits into the zone after the departure. */
+    touches: z.number().int().nonnegative(),
     score: z.number().min(0).max(100),
     scoreBreakdown: ZoneScoreBreakdownSchema,
   })
