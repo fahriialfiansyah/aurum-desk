@@ -1,0 +1,32 @@
+{
+  "name": "aurum-desk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Personal XAUUSD agent trading desk — analysis + alerts only, never executes orders.",
+  "packageManager": "pnpm@12.9.1",
+  "engines": {
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "dev": "turbo run dev --filter=@aurum/server --filter=@aurum/web",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "test:coverage": "turbo run test:coverage",
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint",
+    "db:up": "docker compose up -d db",
+    "db:down": "docker compose down",
+    "db:migrate": "pnpm --filter @aurum/db migrate",
+    "ingest": "pnpm --filter @aurum/ingest cli",
+    "e2e": "pnpm --filter @aurum/web e2e",
+    "format": "prettier --write \"**/*.{ts,tsx,md,json,yml,yaml,css}\""
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "@vitest/coverage-v8": "^4.1.11",
+    "prettier": "^3.6.0",
+    "turbo": "^2.11.7",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.11"
+  }
+}

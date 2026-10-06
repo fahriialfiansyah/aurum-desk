@@ -1,0 +1,31 @@
+{
+  "name": "@aurum/ingest",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --clear-screen=false src/main.ts serve",
+    "start": "tsx src/main.ts serve",
+    "cli": "tsx src/main.ts",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@aurum/db": "workspace:*",
+    "@aurum/engine": "workspace:*",
+    "@aurum/shared": "workspace:*",
+    "dukascopy-node": "^1.50.0",
+    "node-cron": "^4.6.0",
+    "pino": "^10.4.0",
+    "pino-pretty": "^13.2.0",
+    "tsx": "^4.23.15",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "@vitest/coverage-v8": "^4.1.11",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.11"
+  }
+}

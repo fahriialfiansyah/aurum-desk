@@ -1,0 +1,73 @@
+services:
+  db:
+    image: timescale/timescaledb:latest-pg16
+    container_name: aurum-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: aurum
+      POSTGRES_PASSWORD: aurum
+      POSTGRES_DB: aurum
+      TIMESCALEDB_TELEMETRY: "off"
+    command: ["postgres", "-c", "shared_preload_libraries=timescaledb", "-c", "timescaledb.telemetry_level=off"]
+    ports:
+      - "5432:5432"
+    volumes:
+      - aurum-dbdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aurum -d aurum"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  ingest:
+    build:
+      context: .
+      dockerfile: apps/ingest/Dockerfile
+    container_name: aurum-ingest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://aurum:aurum@db:5432/aurum
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./data:/app/data
+    profiles: ["full"]
+
+  server:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    container_name: aurum-server
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://aurum:aurum@db:5432/aurum
+      SERVER_HOST: 0.0.0.0
+    ports:
+      - "4000:4000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./data:/app/data
+    profiles: ["full"]
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:4000
+        NEXT_PUBLIC_WS_URL: ws://localhost:4000/ws
+    container_name: aurum-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - server
+    profiles: ["full"]
+
+volumes:
+  aurum-dbdata:
