@@ -6,6 +6,12 @@ import { fmtTimeSec } from '@/lib/format';
 import { useDeskStore } from '@/store/desk-store';
 import { Panel } from './Panel';
 
+/** Scrolls only the owning panel body — never the page (scrollIntoView would also pan the window). */
+function scrollToEnd(marker: HTMLElement | null): void {
+  const container = marker?.closest<HTMLElement>('[data-scroll]');
+  if (container) container.scrollTop = container.scrollHeight;
+}
+
 const LEVEL_CLS: Record<AgentEvent['level'], string> = { info: 'text-fg', success: 'text-up', warn: 'text-warn', error: 'text-down' };
 const LEVEL_ICON: Record<AgentEvent['level'], string> = { info: '·', success: '✦', warn: '▲', error: '✕' };
 
@@ -18,7 +24,7 @@ export function ActivityLog() {
   const visible = filter === 'all' ? events : events.filter((e) => e.agent === filter);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ block: 'end' });
+    scrollToEnd(endRef.current);
   }, [visible.length]);
 
   return (
@@ -27,6 +33,8 @@ export function ActivityLog() {
       className="h-full"
       right={
         <select
+          id="log-filter"
+          name="agentFilter"
           value={filter}
           onChange={(e) => setFilter(e.target.value as AgentName | 'all')}
           className="h-5 border border-line bg-elev px-1 text-[10px] text-muted"

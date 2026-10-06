@@ -44,6 +44,14 @@ describe('desk store message handling', () => {
     expect(selectJournal(state)).toHaveLength(1);
   });
 
+  test('agent events are deduplicated by id (hello re-sends recent events on reconnect)', () => {
+    const { handleMessage } = useDeskStore.getState();
+    const event = { id: 'evt_1', ts: new Date().toISOString(), agent: 'zones' as const, level: 'info' as const, summary: 'x' };
+    handleMessage({ type: 'agentEvent', event });
+    handleMessage({ type: 'agentEvent', event });
+    expect(useDeskStore.getState().events).toHaveLength(1);
+  });
+
   test('analysis snapshots are stored per timeframe', () => {
     useDeskStore.getState().handleMessage({ type: 'analysis', snapshot: analysis });
     expect(useDeskStore.getState().analysis.M15?.zones).toHaveLength(1);

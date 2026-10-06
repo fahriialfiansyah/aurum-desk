@@ -152,7 +152,8 @@ export const useDeskStore = create<DeskState>()(
           }));
           return;
         case 'agentEvent':
-          set((s) => ({ events: [...s.events, message.event].slice(-MAX_EVENTS) }));
+          // The hello snapshot re-sends recent events on reconnect; keep ids unique.
+          set((s) => (s.events.some((e) => e.id === message.event.id) ? {} : { events: [...s.events, message.event].slice(-MAX_EVENTS) }));
           return;
         case 'agentStates':
           set({ agents: message.states });

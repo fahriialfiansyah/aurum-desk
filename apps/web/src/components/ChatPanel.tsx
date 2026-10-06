@@ -6,6 +6,12 @@ import { ApiError, api } from '@/lib/api';
 import { useDeskStore } from '@/store/desk-store';
 import { Panel } from './Panel';
 
+/** Scrolls only the owning panel body — never the page (scrollIntoView would also pan the window). */
+function scrollToEnd(marker: HTMLElement | null): void {
+  const container = marker?.closest<HTMLElement>('[data-scroll]');
+  if (container) container.scrollTop = container.scrollHeight;
+}
+
 const SUGGESTIONS = ['kenapa setup ini valid?', 'bias M30 sekarang?', 'zona demand terdekat?', 'jalankan playbook B'];
 
 export function ChatPanel() {
@@ -19,7 +25,7 @@ export function ChatPanel() {
   const endRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ block: 'end' });
+    scrollToEnd(endRef.current);
   }, [chat.length, streaming]);
 
   const send = async (text: string) => {
@@ -46,7 +52,7 @@ export function ChatPanel() {
 
   return (
     <Panel title="Copilot" right={<span>{streaming ? 'mengetik…' : 'Bahasa Indonesia'}</span>} className="h-full" bodyClassName="flex flex-col">
-      <div className="min-h-0 flex-1 space-y-2 overflow-auto px-3 py-2 scrollbar-thin-custom" data-testid="chat-messages">
+      <div data-scroll className="min-h-0 flex-1 space-y-2 overflow-auto px-3 py-2 scrollbar-thin-custom" data-testid="chat-messages">
         {chat.length === 0 ? (
           <div className="text-[11px] text-faint">
             Tanya apa saja tentang struktur, zona, atau setup. Copilot hanya memakai level dari engine — tidak pernah mengarang harga.
@@ -82,6 +88,8 @@ export function ChatPanel() {
       </div>
       <form onSubmit={onSubmit} className="flex shrink-0 items-center gap-2 border-t border-line p-2">
         <input
+          id="copilot-input"
+          name="message"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="tanya copilot…"

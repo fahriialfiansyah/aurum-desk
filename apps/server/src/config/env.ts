@@ -18,7 +18,7 @@ export const serverEnvSchema = z
     ENGINE_CANDLE_SOURCE: envEnum(HISTORY_SOURCE_NAMES, 'dukascopy'),
     LLM_PROVIDER: envEnum(LLM_PROVIDER_NAMES, 'none'),
     ANTHROPIC_API_KEY: optionalString,
-    ANTHROPIC_MODEL: envString('claude-sonnet-5-5'),
+    ANTHROPIC_MODEL: envString('claude-opus-5-5'),
     OPENAI_API_KEY: optionalString,
     OPENAI_MODEL: envString('gpt-5-mini'),
     OLLAMA_BASE_URL: envString('http://localhost:11434'),
