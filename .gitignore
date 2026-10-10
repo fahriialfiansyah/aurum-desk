@@ -14,3 +14,4 @@ test-results/
 data/cache/
 data/raw/
 *.tsbuildinfo
+temp/

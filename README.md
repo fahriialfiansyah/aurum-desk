@@ -9,6 +9,20 @@ alasannya ke activity log, dan bisa diajak chat.
 > pernah mengirim order. Semua level dihitung oleh kode deterministik; LLM hanya menalar, memvalidasi, memberi
 > peringkat, dan menjelaskan — tidak pernah mengarang harga.
 
+## Tampilan
+
+Chart multi-timeframe (M5 + M15) dengan zona supply/demand, label struktur (BOS/CHoCH, HH/HL/LH/LL), dan garis setup
+Entry / SL / TP1 / TP2 — dengan panel agen, setup aktif, activity log, dan copilot di sisi kanan. Gambar di bawah
+diambil dari mode replay data XAUUSD riil.
+
+**Tema gelap**
+
+![aurum-desk — tema gelap](docs/screenshots/desk-dark.png)
+
+**Tema terang**
+
+![aurum-desk — tema terang](docs/screenshots/desk-light.png)
+
 ## Jalankan tanpa API key (replay data riil)
 
 Butuh Node ≥ 20.19, pnpm (via corepack), dan Docker (untuk Postgres/TimescaleDB).
